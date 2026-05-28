@@ -1,0 +1,25 @@
+:host {
+  position: absolute;
+  display: flex;
+  bottom: 18px;
+  left: 10px;
+  width: calc(100% - 20px);
+  z-index: 2;
+  background-color: white;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+mat-slider {
+  width: 80%;
+}
+
+.actions {
+  display: flex;
+  padding: 10px;
+  align-items: center;
+}
+
+.live-button {
+  display: inline-block;
+}

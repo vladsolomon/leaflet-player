@@ -1,0 +1,20 @@
+<p class="date">date time and frequency</p>
+
+<div class="actions">
+  <button matIconButton (click)="playPause($event)">
+    <mat-icon class="icon">{{ isStopped ? 'play_arrow' : 'pause' }}</mat-icon>
+  </button>
+  <button matButton="outlined" aria-label="live" class="live-button" (click)="playLive()">
+    <mat-icon>fiber_manual_record</mat-icon> Live
+  </button>
+</div>
+@if (max()) {
+  <mat-slider [min]="min()" [max]="max()" [step]="1">
+    <input
+      matSliderThumb
+      #ngSliderThumb="matSliderThumb"
+      [value]="currentIndex()"
+      (valueChange)="handleTimestampChange($event)"
+    />
+  </mat-slider>
+}
