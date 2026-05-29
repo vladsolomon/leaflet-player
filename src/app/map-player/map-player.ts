@@ -3,8 +3,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  OnInit,
+  OnDestroy,
   signal,
+  ViewChild,
   WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -22,9 +23,10 @@ import {
 import { PlayerControls } from './components/player-controls/player-controls.component';
 import { FakeGeoWebsocketService } from './services/fake-geo-websocket.service';
 import { GeoDataConverter } from './services/geo-data-converter';
-import { throttleTime } from 'rxjs';
+import { interval, Subscription, throttleTime } from 'rxjs';
 import { GeoDataHistoryService } from './services/geo-data-history.service';
-import { GeoSignalMessage } from '../interface/geo-data.interface';
+import { GeoSignalMessage } from '@app/interface/geo-data.interface';
+import { WebsocketGeoDataService } from '@app/services/websocket-data-service';
 
 @Component({
   selector: 'app-map-player',
@@ -32,18 +34,28 @@ import { GeoSignalMessage } from '../interface/geo-data.interface';
   templateUrl: './map-player.html',
   styleUrl: './map-player.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [FakeGeoWebsocketService, GeoDataConverter, GeoDataHistoryService],
+  providers: [
+    GeoDataConverter,
+    GeoDataHistoryService,
+    {
+      provide: WebsocketGeoDataService,
+      useClass: FakeGeoWebsocketService,
+    },
+  ],
 })
-export default class MapPlayer implements OnInit, AfterViewInit {
-  private readonly geoWebsocketService = inject(FakeGeoWebsocketService);
+export default class MapPlayer implements AfterViewInit, OnDestroy {
+  private readonly geoWebsocketService = inject(WebsocketGeoDataService);
   private readonly geoDataHistoryService = inject(GeoDataHistoryService);
   private readonly geoDataConverter = inject(GeoDataConverter);
+
+  private playSubscription!: Subscription;
+
+  @ViewChild(PlayerControls) public controls!: PlayerControls;
 
   private map!: WritableSignal<Map>;
 
   private polygon: Polygon | null = null;
   private marker: Marker | null = null;
-  private play: boolean = true;
 
   private readonly icon = new Icon({
     iconUrl: 'marker.svg',
@@ -52,22 +64,26 @@ export default class MapPlayer implements OnInit, AfterViewInit {
   });
 
   constructor() {
+    this.geoWebsocketService.connect('url');
     this.geoWebsocketService.stream$
       .pipe(takeUntilDestroyed(), throttleTime(100))
       .subscribe((data) => {
-        if (this.play) {
-          this.handleGeoData(data)
+        if (this.controls.isLive) {
+          this.handleGeoData(data);
         } else {
           this.geoDataHistoryService.add(data);
         }
       });
   }
 
-  ngOnInit() {}
-
   ngAfterViewInit() {
     this.initMap();
     this.centerMap();
+  }
+
+  ngOnDestroy() {
+    this.stopPlayingHistory();
+    this.geoWebsocketService.disconnect();
   }
 
   private initMap() {
@@ -78,15 +94,14 @@ export default class MapPlayer implements OnInit, AfterViewInit {
 
   private centerMap() {
     const bounds = this.polygon?.getBounds();
-    if (this.marker) {
+    if (this.marker && bounds) {
       bounds?.extend(this.marker.getLatLng());
     }
     if (!bounds) {
       // TODO: fit default
+      return;
     }
-    if (bounds) {
-      this.map().fitBounds(bounds, { padding: [80, 80] });
-    }
+    this.map().fitBounds(bounds, { padding: [80, 80] });
   }
 
   private handleGeoData(data: GeoSignalMessage) {
@@ -108,12 +123,26 @@ export default class MapPlayer implements OnInit, AfterViewInit {
     }
   }
 
-  onPlay(play: boolean) {
-    this.play = play;
+  onPlay() {
+    // On Play
+    if (this.controls.isPlay && !this.controls.isLive) {
+      this.playSubscription = interval(2000).subscribe(() => {
+        const index = this.controls.currentIndex();
+        this.controls.currentIndex.set(index + 1);
+        const snapshot = this.geoDataHistoryService.getByIndex(index + 1);
+        this.renderGeoData(snapshot);
+        this.centerMap();
+      });
+    }
+    // On Pause
+    if (!this.controls.isPlay) {
+      this.stopPlayingHistory();
+    }
   }
 
   onLive() {
-    console.log('live');
+    this.stopPlayingHistory();
+    this.onChangeTimestamp(this.controls.max() - 1);
   }
 
   onChangeTimestamp(index: number) {
@@ -122,6 +151,12 @@ export default class MapPlayer implements OnInit, AfterViewInit {
     if (geoData) {
       this.renderGeoData(geoData);
       this.centerMap();
+    }
+  }
+
+  private stopPlayingHistory() {
+    if (this.playSubscription) {
+      this.playSubscription.unsubscribe();
     }
   }
 }

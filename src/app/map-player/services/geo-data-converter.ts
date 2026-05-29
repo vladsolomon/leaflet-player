@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { GeoPoint, GeoSignalMessage } from '../../interface/geo-data.interface';
+import { GeoPoint, GeoSignalMessage } from '@app/interface/geo-data.interface';
 import { latLng, LatLngExpression } from 'leaflet';
 
 @Injectable()
@@ -16,6 +16,7 @@ export class GeoDataConverter {
     return points.filter((p) => p?.lat && p?.lon).map((p) => latLng(p.lat, p.lon));
   }
 
+  // convert all data - facade
   convertGeoDataEntity(data: GeoSignalMessage): {
     marker: LatLngExpression | null;
     polygon: LatLngExpression[] | null;

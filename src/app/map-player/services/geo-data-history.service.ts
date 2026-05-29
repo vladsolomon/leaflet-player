@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { GeoSignalMessage } from '../../interface/geo-data.interface';
+import { GeoSignalMessage } from '@app/interface/geo-data.interface';
 
 const HOURS_LIMIT = 12;
 
@@ -23,13 +23,16 @@ export class GeoDataHistoryService {
     return this.history.slice(-count);
   }
 
-  public getByIndex(index: number): GeoSignalMessage | undefined {
+  public getByIndex(index: number): GeoSignalMessage {
     return this.history[index];
   }
 
   public getByTimestamp(timestamp: number): GeoSignalMessage | undefined {
-    const closest = this.findClosestTimestamp(timestamp, this.history.map((historyItem) => historyItem.timestamp))
-    return this.history.find((historyItem) => historyItem.timestamp = closest);
+    const closest = this.findClosestTimestamp(
+      timestamp,
+      this.history.map((historyItem) => historyItem.timestamp),
+    );
+    return this.history.find((historyItem) => (historyItem.timestamp = closest));
   }
 
   public clear(): void {
@@ -37,6 +40,7 @@ export class GeoDataHistoryService {
     this.historySubject$.next(this.history);
   }
 
+  // TODO: trim old snapshots, do this every minute (maybe)
   public trim(): void {
     if (this.history.length <= 1) {
       return;
@@ -60,6 +64,7 @@ export class GeoDataHistoryService {
     this.historySubject$.next(this.history);
   }
 
+  // TODO: switch from index-based to timestamp-based player logic
   private findClosestTimestamp(target: number, timestamps: number[]) {
     let closest = timestamps[0];
 

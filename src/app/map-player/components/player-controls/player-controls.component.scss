@@ -1,6 +1,7 @@
 :host {
   position: absolute;
   display: flex;
+  flex-direction: column;
   bottom: 18px;
   left: 10px;
   width: calc(100% - 20px);
@@ -11,15 +12,33 @@
 }
 
 mat-slider {
-  width: 80%;
+  width: 100%;
+  flex-shrink: 1;
+  margin-top: 8px;
 }
 
 .actions {
   display: flex;
   padding: 10px;
   align-items: center;
+  margin-right: 20px;
+  flex-shrink: 0;
 }
 
 .live-button {
-  display: inline-block;
+  display: inline-flex;
+  &.red {
+    color: red;
+  }
+}
+
+.controls {
+  display: flex;
+  width: 100%;
+}
+
+.info {
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
 }

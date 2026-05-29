@@ -1,19 +1,21 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   output,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DatePipe } from '@angular/common';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatSlider, MatSliderThumb } from '@angular/material/slider';
 import { GeoDataHistoryService } from '../../services/geo-data-history.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-player-controls',
-  imports: [MatIcon, MatButton, MatIconButton, MatSlider, MatSliderThumb],
+  imports: [MatIcon, MatButton, MatIconButton, MatSlider, MatSliderThumb, DatePipe],
   templateUrl: './player-controls.component.html',
   styleUrl: './player-controls.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,14 +23,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class PlayerControls {
   public readonly historyService = inject(GeoDataHistoryService);
 
-  public currentTimestamp = signal(0);
   public currentIndex = signal(0);
-  // public currentIndex = computed(() =>
-  //   this.historyService.history.map((h) => h.timestamp).findIndex(this.currentTimestamp),
-  // );
 
   public timeStamps = signal<number[]>([]);
-  public isStopped = false;
+  public isPlay = true;
+  public isLive = true;
 
   public min = signal(0);
   public max = signal(1);
@@ -37,15 +36,22 @@ export class PlayerControls {
   public emitLive = output<void>();
   public emitTimestamp = output<number>();
 
+  public snapshotInfo = computed(() => {
+    const snapshot = this.historyService.getByIndex(this.currentIndex());
+    if (snapshot) {
+      const { timestamp, frequency } = snapshot;
+      return { timestamp, frequency };
+    }
+    return { timestamp: Date.now(), frequency: 0 };
+  });
+
   constructor() {
     this.historyService.historySubject$.pipe(takeUntilDestroyed()).subscribe((history) => {
       if (history.length > 1) {
         const lastIndex = history.length - 1;
-        // const last = history[history.length - 1].timestamp;
-        // this.min.set(history[0].timestamp);
         this.max.set(lastIndex);
         this.timeStamps.set(history.map((_, index) => index));
-        if (!this.isStopped) {
+        if (this.isPlay && this.isLive) {
           this.currentIndex.set(lastIndex);
         }
       }
@@ -54,29 +60,35 @@ export class PlayerControls {
 
   public playPause(e: PointerEvent) {
     e.stopPropagation();
-    if (this.isStopped) {
-      this.play();
-    } else {
+    if (this.isPlay) {
       this.pause();
+    } else {
+      this.play();
     }
   }
 
-  handleTimestampChange(timeStamp: number) {
+  handleTimestampChange(timeStampIndex: number) {
     this.pause();
-    this.emitTimestamp.emit(timeStamp);
+    this.currentIndex.set(timeStampIndex);
+    this.emitTimestamp.emit(timeStampIndex);
   }
 
   play() {
-    this.isStopped = false;
+    this.isPlay = true;
+    this.isLive = false;
     this.emitPlay.emit(true);
   }
 
   pause() {
-    this.isStopped = true;
+    this.isPlay = false;
+    this.isLive = false;
     this.emitPlay.emit(false);
   }
 
   playLive() {
+    this.currentIndex.set(this.max());
+    this.isPlay = true;
+    this.isLive = true;
     this.emitLive.emit();
   }
 }

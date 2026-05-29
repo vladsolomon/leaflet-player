@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Observable, interval, map, shareReplay } from 'rxjs';
-import { GeoPoint, GeoSignalMessage } from '../../interface/geo-data.interface';
-
+import { GeoPoint, GeoSignalMessage } from '@app/interface/geo-data.interface';
+import { WebsocketGeoDataService } from '@app/services/websocket-data-service';
 
 @Injectable()
-export class FakeGeoWebsocketService {
+export class FakeGeoWebsocketService implements WebsocketGeoDataService {
   /**
    * Fake websocket stream
    * emits every 2 seconds
@@ -28,10 +28,7 @@ export class FakeGeoWebsocketService {
     };
   }
 
-  private generatePolygon(
-    center: GeoPoint,
-    pointsCount: number,
-  ): GeoPoint[] {
+  private generatePolygon(center: GeoPoint, pointsCount: number): GeoPoint[] {
     const result: GeoPoint[] = [];
 
     for (let i = 0; i < pointsCount; i++) {
@@ -41,12 +38,8 @@ export class FakeGeoWebsocketService {
       const radius = this.randomFloat(0.003, 0.015, 6);
 
       result.push({
-        lat: Number(
-          (center.lat + Math.cos(angle) * radius).toFixed(6),
-        ),
-        lon: Number(
-          (center.lon + Math.sin(angle) * radius).toFixed(6),
-        ),
+        lat: Number((center.lat + Math.cos(angle) * radius).toFixed(6)),
+        lon: Number((center.lon + Math.sin(angle) * radius).toFixed(6)),
       });
     }
 
@@ -55,22 +48,23 @@ export class FakeGeoWebsocketService {
 
   private randomizePoint(lat: number, lon: number): GeoPoint {
     return {
-      lat: Number(
-        (lat + this.randomFloat(-0.005, 0.005, 6)).toFixed(6),
-      ),
-      lon: Number(
-        (lon + this.randomFloat(-0.005, 0.005, 6)).toFixed(6),
-      ),
+      lat: Number((lat + this.randomFloat(-0.005, 0.005, 6)).toFixed(6)),
+      lon: Number((lon + this.randomFloat(-0.005, 0.005, 6)).toFixed(6)),
     };
   }
 
-  private randomFloat(
-    min: number,
-    max: number,
-    decimals = 2,
-  ): number {
-    return Number(
-      (Math.random() * (max - min) + min).toFixed(decimals),
-    );
+  private randomFloat(min: number, max: number, decimals = 2): number {
+    return Number((Math.random() * (max - min) + min).toFixed(decimals));
+  }
+
+  connect(url: string) {
+    console.log('fake connect to websocket');
+  }
+
+  send(message: any) {
+    // do nothing
+  }
+  disconnect() {
+    console.log('fake disconnect');
   }
 }
